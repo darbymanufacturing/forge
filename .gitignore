@@ -16,9 +16,9 @@ database.sqlite
 .env
 .env.*
 
-package-lock.json
 yarn.lock
 pnpm-lock.yaml
+# package-lock.json is committed so CI npm caching works (actions/setup-node cache: "npm")
 
 /extensions/*/dist
 /extensions/customizer/assets/*.js
