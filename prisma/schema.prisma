@@ -1,0 +1,156 @@
+// FORGE — Prisma schema
+// Database: Supabase PostgreSQL
+// https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  // Pooled connection (transaction mode) for serverless/edge runtime
+  url       = env("DATABASE_URL")
+  // Direct connection — used by prisma migrate
+  directUrl = env("DIRECT_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Session — required by @shopify/shopify-app-session-storage-prisma
+// ---------------------------------------------------------------------------
+model Session {
+  id                  String    @id
+  shop                String
+  state               String
+  isOnline            Boolean   @default(false)
+  scope               String?
+  expires             DateTime?
+  accessToken         String
+  userId              BigInt?
+  firstName           String?
+  lastName            String?
+  email               String?
+  accountOwner        Boolean   @default(false)
+  locale              String?
+  collaborator        Boolean?  @default(false)
+  emailVerified       Boolean?  @default(false)
+  refreshToken        String?
+  refreshTokenExpires DateTime?
+}
+
+// ---------------------------------------------------------------------------
+// Shop — one row per installed Shopify store
+// ---------------------------------------------------------------------------
+model Shop {
+  id                 String    @id @default(cuid())
+  /// myshopify.com domain, unique per store
+  domain             String    @unique
+  plan               PlanTier  @default(FREE)
+  /// UTC timestamp of app install
+  installedAt        DateTime  @default(now())
+  /// Set when the first CustomizableProduct goes LIVE — tracks the activation metric
+  firstProductLiveAt DateTime?
+  /// Printify shop ID, set after the merchant connects their Printify account
+  printifyShopId     String?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  customizableProducts CustomizableProduct[]
+  designs              Design[]
+}
+
+enum PlanTier {
+  FREE
+  STARTER
+  GROWTH
+  SCALE
+}
+
+// ---------------------------------------------------------------------------
+// CustomizableProduct — links a Shopify product to its FORGE customizer config
+// ---------------------------------------------------------------------------
+model CustomizableProduct {
+  id                String        @id @default(cuid())
+  shopId            String
+  /// Shopify product GID (e.g. "gid://shopify/Product/123456789")
+  shopifyProductId  String
+  /// Printify product ID — set after the product is synced to Printify
+  printifyProductId String?
+  status            ProductStatus @default(DRAFT)
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  shop   Shop              @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  config CustomizerConfig?
+
+  /// Each Shopify product can only have one customizer config per shop
+  @@unique([shopId, shopifyProductId])
+}
+
+enum ProductStatus {
+  /// Config is being set up — not yet visible on the storefront
+  DRAFT
+  /// Live on the storefront — counts toward the activation metric
+  LIVE
+  /// Archived — hidden but data retained
+  ARCHIVED
+}
+
+// ---------------------------------------------------------------------------
+// CustomizerConfig — the customisation specification for a product
+// Stored as JSON for the flexible zone geometry; structured for Phase 3 UI.
+// ---------------------------------------------------------------------------
+model CustomizerConfig {
+  id                    String   @id @default(cuid())
+  customizableProductId String   @unique
+  /// Array of DesignArea objects:
+  /// { id, name, x, y, width, height, allowText, allowImage, aspectRatio? }
+  designAreas           Json
+  /// Optional allow-list of font names / Google Fonts URLs
+  allowedFonts          Json?
+  /// Optional allow-list of hex colour strings for text
+  allowedColors         Json?
+  /// Mockup template image URL (hosted on Shopify CDN or Cloudinary)
+  baseImageUrl          String?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  customizableProduct CustomizableProduct @relation(fields: [customizableProductId], references: [id], onDelete: Cascade)
+}
+
+// ---------------------------------------------------------------------------
+// Design — a customer's customisation (used for quota metering and fulfillment)
+// ---------------------------------------------------------------------------
+model Design {
+  id               String       @id @default(cuid())
+  shopId           String
+  /// Shopify order GID — set when the customer places an order
+  shopifyOrderId   String?
+  /// Shopify product GID
+  shopifyProductId String?
+  /// Shopify variant GID
+  shopifyVariantId String?
+  /// The customer's layers: text overlays, image placements, colours, etc.
+  /// Schema validated at write time in the app layer.
+  designData       Json
+  /// URL of the final rendered artwork (PNG) uploaded for Printify fulfillment
+  renderedImageUrl String?
+  status           DesignStatus @default(PENDING)
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
+  shop Shop @relation(fields: [shopId], references: [id], onDelete: Cascade)
+
+  @@index([shopId, createdAt])
+  @@index([shopifyOrderId])
+}
+
+enum DesignStatus {
+  /// Customer has submitted — rendering not yet complete
+  PENDING
+  /// Artwork rendered and ready for Printify
+  RENDERED
+  /// Submitted to Printify for fulfillment
+  SUBMITTED
+  /// Rendering or submission failed — requires attention
+  FAILED
+}

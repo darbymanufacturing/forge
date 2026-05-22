@@ -1,0 +1,41 @@
+{%- comment -%}
+  FORGE Customizer — App Block
+  Rendered on the product page when a merchant has configured a customizer
+  for this product. Mounts the <forge-customizer> web component.
+{%- endcomment -%}
+
+{%- assign forge_product_id = product.id | prepend: 'gid://shopify/Product/' -%}
+
+<div
+  class="forge-customizer-wrapper"
+  data-forge-product-id="{{ forge_product_id }}"
+  data-forge-shop="{{ shop.permanent_domain }}"
+>
+  {%- comment -%}
+    The <forge-customizer> custom element is defined in forge-customizer.js.
+    It self-hydrates using the data attributes above.
+  {%- endcomment -%}
+  <forge-customizer
+    product-id="{{ forge_product_id }}"
+    shop="{{ shop.permanent_domain }}"
+    locale="{{ request.locale.iso_code }}"
+  ></forge-customizer>
+</div>
+
+{{ 'forge-customizer.js' | asset_url | script_tag }}
+{{ 'forge-customizer.css' | asset_url | stylesheet_tag }}
+
+{% schema %}
+{
+  "name": "FORGE Customizer",
+  "target": "section",
+  "javascript": "forge-customizer.js",
+  "stylesheet": "forge-customizer.css",
+  "settings": [],
+  "presets": [
+    {
+      "name": "FORGE Customizer"
+    }
+  ]
+}
+{% endschema %}

@@ -1,0 +1,12 @@
+# FORGE Customizer — Theme App Extension
+# https://shopify.dev/docs/apps/build/online-store/theme-app-extensions
+
+api_version = "2025-10"
+
+[[extensions]]
+name = "FORGE Customizer"
+handle = "forge-customizer"
+type = "theme"
+
+  [extensions.settings]
+  # No settings yet — configuration lives in the admin app.
