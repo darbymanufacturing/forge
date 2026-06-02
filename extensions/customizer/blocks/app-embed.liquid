@@ -1,0 +1,26 @@
+{%- comment -%}
+  FORGE Customizer — App Embed Block
+  Loads the customizer script only on product pages where a FORGE customizer
+  is active. Using an App Embed Block scopes the script to specific pages,
+  minimising performance impact on the rest of the storefront.
+{%- endcomment -%}
+
+{% if template == 'product' %}
+  {{ 'forge-customizer.js' | asset_url | script_tag }}
+{% endif %}
+
+{% schema %}
+{
+  "name": "FORGE Customizer Embed",
+  "target": "body",
+  "javascript": "forge-customizer.js",
+  "settings": [
+    {
+      "type": "checkbox",
+      "id": "enabled",
+      "label": "Enable FORGE Customizer",
+      "default": true
+    }
+  ]
+}
+{% endschema %}
